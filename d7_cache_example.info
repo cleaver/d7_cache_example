@@ -1,0 +1,5 @@
+name = D7 Cache Example
+description = An example of a caching function using PHP anonymous functions
+package = Examples
+core = 7.x
+configure = admin/config/system/cache-example

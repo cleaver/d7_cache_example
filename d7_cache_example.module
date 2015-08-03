@@ -1,0 +1,95 @@
+<?php
+
+/**
+ * @file d7_cache_example.module
+ *
+ * An example of a caching function using PHP anonymous functions.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function d7_cache_example_menu() {
+  $items['cache-example'] = array(
+    'title' => 'Cache Example',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('d7_cache_example_form'),
+    'access arguments' => array('access content'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+
+/**
+ * Form callback for d7_cache_example_form.
+ */
+function d7_cache_example_form() {
+  $form['postal_code'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Postal code'),
+  );
+  $form['country'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Country'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
+}
+
+/**
+ * Submit callback for d7_cache_example_form.
+ */
+function d7_cache_example_form_submit($form, &$form_state) {
+  $values = $form_state['values'];
+  $url = url('http://api.geonames.org/postalCodeLookupJSON',
+    array(
+      'query' => array(
+        'postalcode' => $values['postal_code'],
+        'country' => $values['country'],
+        'username' => 'demo',
+      )
+    ));
+  $start_time = microtime(TRUE);
+  $function = function() use ($url) {
+    $result = drupal_http_request($url);
+    $data = json_decode($result->data);
+    return $data;
+  };
+  $data = d7_cache_it($function, $url);
+  $end_time = microtime(true);
+  drupal_set_message(t('Location: @location, Latitude: @lat, Longitude: @lng, Time to retrieve: @seconds', array(
+    '@location' => $data->postalcodes[0]->placeName,
+    '@lat' => $data->postalcodes[0]->lat,
+    '@lng' => $data->postalcodes[0]->lng,
+    '@seconds' => $end_time - $start_time,
+  )));
+}
+
+
+/**
+ * Caching function. Returns cached data if available, or retrieves the results
+ * using the supplied function
+ *
+ * @param $function function
+ *    A function that will be executed to retrieve a result set.
+ * @param $cid string
+ *    Unique cache identifier for the result set.
+ * @return mixed
+ *    Result from cache or supplied function.
+ */
+function d7_cache_it($function, $cid) {
+  $cache = cache_get($cid);
+  if (!$cache) {
+    $data = $function();
+    cache_set($cid, $data);
+  }
+  else {
+    $data = $cache->data;
+  }
+  return $data;
+}
