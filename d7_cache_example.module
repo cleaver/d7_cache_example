@@ -46,23 +46,27 @@ function d7_cache_example_form() {
  */
 function d7_cache_example_form_submit($form, &$form_state) {
   $values = $form_state['values'];
+  // create URL, eg: http://api.geonames.org/postalCodeLookupJSON?postalcode=M5W1E6&country=CA&username=demo
   $url = url('http://api.geonames.org/postalCodeLookupJSON',
     array(
       'query' => array(
         'postalcode' => $values['postal_code'],
         'country' => $values['country'],
-        'username' => 'demo',
+        'username' => 'demo',   // register to get your own account: http://geonames.org/login
       )
     ));
   $start_time = microtime(TRUE);
+  // define our function
   $function = function() use ($url) {
+    // Request data from web services
     $result = drupal_http_request($url);
     $data = json_decode($result->data);
     return $data;
   };
+  // call our function with caching
   $data = d7_cache_it($function, $url);
   $end_time = microtime(true);
-  drupal_set_message(t('Location: @location, Latitude: @lat, Longitude: @lng, Time to retrieve: @seconds', array(
+  drupal_set_message(t('Location: @location, Latitude: @lat, Longitude: @lng, Elapsed time: @seconds seconds.', array(
     '@location' => $data->postalcodes[0]->placeName,
     '@lat' => $data->postalcodes[0]->lat,
     '@lng' => $data->postalcodes[0]->lng,
